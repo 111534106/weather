@@ -1924,10 +1924,11 @@ function updateFavoriteLabel(city) {
     }
 
     const updatedName = newLabel.trim();
-    favorite.label = updatedName;
+    // favorite.label = updatedName;  <-- REMOVED PREMATURE UPDATE
 
     // Smart Update: Check if the new name corresponds to a valid city
-    // If it's a known city/alias, update the underlying city ID too.
+    let isCityMatch = false;
+
     if (window.CitySearch && window.CitySearch.searchCities) {
         const results = window.CitySearch.searchCities(updatedName);
         console.log('[Favorites] Smart Update Check:', updatedName, results);
@@ -1937,14 +1938,28 @@ function updateFavoriteLabel(city) {
             // Allow Alias match (95) and Exact match (100)
             if (bestMatch.score >= 90) {
                 favorite.city = bestMatch.city;
+                favorite.label = updatedName; // Confirmed valid city match
+                isCityMatch = true;
                 console.log(`[Favorites] Smart updated city ID to: ${favorite.city}`);
-                // Removed debug alert as verify complete
             }
         }
     } else {
         // Fallback: If no smart search, just update city ID to match label
-        // This handles simple cases even without the module
         favorite.city = updatedName;
+        favorite.label = updatedName;
+        isCityMatch = true;
+    }
+
+    // If not a city match, ask for confirmation (Fool-proof)
+    if (!isCityMatch) {
+        const confirmNickname = confirm(`「${updatedName}」不是一個已知的台灣城市。\n\n您確定要將其作為「${favorite.city}」的暱稱嗎？\n(按「取消」可重新輸入)`);
+        if (!confirmNickname) {
+            // User cancelled. Since we haven't modified 'favorite' yet, 
+            // doing nothing here is safe. The objects remain unchanged.
+            return;
+        }
+        // User confirmed they want a nickname
+        favorite.label = updatedName;
     }
 
     if (saveFavorites(favorites)) {
