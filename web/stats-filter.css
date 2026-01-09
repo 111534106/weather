@@ -1,0 +1,39 @@
+/* Stats Filter Group */
+.stats-filter-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 6px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stats-city-filter {
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid transparent;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 120px;
+}
+
+.stats-city-filter:hover {
+    border-color: var(--accent-primary);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.stats-city-filter:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+/* 修正下拉選單選項顏色 - 深色背景淺色文字 */
+.stats-city-filter option {
+    background-color: #1e293b;
+    color: #e5e7eb;
+    padding: 8px;
+}

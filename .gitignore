@@ -1,2 +1,24 @@
 # 忽略 API Key 設定檔
 config.ini
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# 測試和日誌檔案
+error_logs/
+tests/*.json
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 作業系統
+.DS_Store
+Thumbs.db

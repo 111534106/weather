@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台灣天氣查詢 | Taiwan Weather</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="stats-filter.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Noto+Sans+TC:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <!-- SunCalc.js for sunrise/sunset calculations -->
+    <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.min.js" defer></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+
+<body>
+    <!-- Background Elements -->
+    <div class="bg-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <div class="main-container">
+        <header class="glass-header">
+            <div class="logo">
+                <i class="fa-solid fa-cloud-sun-rain"></i>
+                <h1>TW Weather</h1>
+            </div>
+            <!-- Language Selector (Left) -->
+            <div class="language-selector">
+                <button id="lang-btn" class="lang-btn" aria-label="選擇語言" title="選擇語言">
+                    <i class="fa-solid fa-language"></i>
+                    <span class="current-lang">繁中</span>
+                </button>
+                <div class="lang-dropdown hidden">
+                    <div class="lang-option active" data-lang="zh-TW">
+                        🇹🇼 繁體中文
+                    </div>
+                    <div class="lang-option" data-lang="en">
+                        🇬🇧 English
+                    </div>
+                </div>
+            </div>
+
+            <!-- Favorites Dropdown (New) -->
+            <div class="favorites-dropdown-wrapper">
+                <button id="favorites-btn" class="favorites-btn" aria-label="我的最愛" title="我的最愛">
+                    <i class="fa-solid fa-star"></i>
+                    <span class="favorites-count">0</span>
+                </button>
+                <div class="favorites-dropdown hidden">
+                    <div class="favorites-header">
+                        <h4>⭐ 我的最愛</h4>
+                        <span class="favorites-limit">0 / 10</span>
+                    </div>
+                    <div id="favorites-list" class="favorites-list">
+                        <div class="empty-favorites">尚未新增最愛城市</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme Toggle (Right) -->
+            <button id="theme-toggle" class="theme-toggle-btn" aria-label="切換主題" data-i18n-title="button.themeToggle">
+                <i class="fa-solid fa-sun theme-icon"></i>
+            </button>
+            <p class="subtitle" data-i18n="app.subtitle">全台 22 縣市即時氣象資訊</p>
+        </header>
+
+        <main>
+            <!-- Feature #15: Extreme Weather Alerts -->
+            <div id="alert-container"></div>
+
+            <!-- Search Section -->
+            <section class="search-section glass-card">
+                <div class="search-box">
+                    <label for="city-search"><i class="fa-solid fa-location-dot"></i> <span
+                            data-i18n="search.selectCity">選擇縣市</span></label>
+                    <div class="search-input-wrapper">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input type="text" id="city-search" class="city-search-input" placeholder="搜尋縣市 (如：台北、Taipei)"
+                            data-i18n-placeholder="search.placeholder" autocomplete="off" />
+                        <button id="btn-voice" class="btn-voice" data-i18n-title="search.voiceInput" aria-label="語音輸入">
+                            <i class="fa-solid fa-microphone"></i>
+                        </button>
+                        <!-- Autocomplete suggestions dropdown -->
+                        <div id="search-suggestions" class="search-suggestions hidden"></div>
+                    </div>
+                    <button id="btn-locate" class="btn-icon" data-i18n-title="search.autoLocate">
+                        <i class="fa-solid fa-location-crosshairs"></i>
+                    </button>
+                    <button id="btn-query-single" class="btn-primary">
+                        <i class="fa-solid fa-magnifying-glass"></i> <span data-i18n="search.queryWeather">查詢天氣</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Status Message -->
+            <div id="status-message" class="status-message"></div>
+
+            <!-- Single Result Section -->
+            <section id="single-result" class="result-section hidden">
+                <div class="advice-card glass-card highlight">
+                    <div class="advice-icon">
+                        <i class="fa-regular fa-lightbulb"></i>
+                    </div>
+                    <div class="advice-content">
+                        <div class="advice-title-row">
+                            <h3 id="advice-title" data-i18n="advice.title">生活建議</h3>
+                            <button id="btn-add-favorite" class="btn-add-favorite hidden" title="加入最愛">
+                                <i class="fa-solid fa-star"></i>
+                                <span>加入最愛</span>
+                            </button>
+                        </div>
+                        <p id="advice-text">--</p>
+                    </div>
+                    <button id="voice-btn" class="voice-btn" data-i18n-title="button.voiceBroadcast"
+                        aria-label="語音播報天氣">
+                        <i class="fa-solid fa-volume-high"></i>
+                    </button>
+                </div>
+
+                <!-- Outfit Recommendation Card -->
+                <div class="outfit-card glass-card">
+                    <div class="outfit-icon">
+                        👗
+                    </div>
+                    <div class="outfit-content">
+                        <h3 data-i18n="outfit.title">建議穿搭</h3>
+                        <div class="outfit-icons" id="outfit-icons">--</div>
+                        <p id="outfit-text">--</p>
+                    </div>
+                </div>
+
+                <!-- Sun Times Info Card -->
+                <div class="sun-info-card glass-card">
+                    <div class="sun-info-header">
+                        <i class="fa-solid fa-sun"></i>
+                        <h3 data-i18n="sun.title">今日天文資訊</h3>
+                    </div>
+                    <div class="sun-times-grid">
+                        <div class="sun-time-item">
+                            <i class="fa-solid fa-sunrise sun-icon sunrise-icon"></i>
+                            <div class="sun-time-label" data-i18n="sun.sunrise">日出</div>
+                            <div class="sun-time-value" id="sunrise-time">--:--</div>
+                        </div>
+                        <div class="sun-time-item">
+                            <i class="fa-solid fa-sunset sun-icon sunset-icon"></i>
+                            <div class="sun-time-label" data-i18n="sun.sunset">日落</div>
+                            <div class="sun-time-value" id="sunset-time">--:--</div>
+                        </div>
+                        <div class="sun-time-item day-length-item">
+                            <i class="fa-solid fa-clock sun-icon"></i>
+                            <div class="sun-time-label" data-i18n="sun.dayLength">白天長度</div>
+                            <div class="sun-time-value" id="day-length">-- 小時 -- 分</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Temperature Card (New Location) -->
+                <div class="current-temp-card glass-card hidden" id="current-temp-card">
+                    <div class="current-temp-header">
+                        <i class="fa-solid fa-temperature-half"></i>
+                        <h3>目前氣溫</h3>
+                    </div>
+                    <div class="current-temp-content">
+                        <div class="temp-display">
+                            <span id="current-temp-val">--</span>
+                            <span class="temp-unit">°C</span>
+                        </div>
+                        <div class="temp-city" id="current-temp-city">--</div>
+                        <div class="temp-time" id="current-temp-time">--</div>
+                    </div>
+                </div>
+
+                <!-- AQI Info Card -->
+                <div class="aqi-card glass-card hidden">
+                    <div class="aqi-header">
+                        <i class="fa-solid fa-wind"></i>
+                        <h3 data-i18n="aqi.title">空氣品質</h3>
+                    </div>
+                    <div class="aqi-content">
+                        <!-- Main AQI Display with Emoji -->
+                        <div class="aqi-main">
+                            <div class="aqi-emoji-container">
+                                <span class="aqi-emoji" id="aqi-emoji">😊</span>
+                            </div>
+                            <div class="aqi-value-container">
+                                <span class="aqi-number" id="aqi-value">--</span>
+                                <span class="aqi-label">AQI</span>
+                            </div>
+                            <div class="aqi-status-container">
+                                <div class="aqi-status" id="aqi-status">--</div>
+                            </div>
+                        </div>
+
+                        <!-- Health Impact Description -->
+                        <div class="health-impact-section">
+                            <div class="health-impact-item">
+                                <i class="fa-solid fa-users"></i>
+                                <div>
+                                    <div class="health-label" data-i18n="aqi.generalPublic">一般民眾</div>
+                                    <div class="health-text" id="health-impact">--</div>
+                                </div>
+                            </div>
+                            <div class="health-impact-item">
+                                <i class="fa-solid fa-heart-pulse"></i>
+                                <div>
+                                    <div class="health-label" data-i18n="aqi.sensitiveGroup">敏感族群</div>
+                                    <div class="health-text" id="sensitive-group">--</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PM2.5 and Pollutant Info -->
+                        <div class="aqi-details">
+                            <div class="aqi-item">
+                                <i class="fa-solid fa-smog"></i>
+                                <div class="aqi-item-content">
+                                    <span class="aqi-item-label" data-i18n="aqi.pm25">細懸浮微粒 (PM2.5)</span>
+                                    <span class="aqi-item-value" id="pm25-value">--</span>
+                                </div>
+                            </div>
+                            <div class="aqi-item">
+                                <i class="fa-solid fa-industry"></i>
+                                <div class="aqi-item-content">
+                                    <span class="aqi-item-label" data-i18n="aqi.pollutant">主要污染物</span>
+                                    <span class="aqi-item-value" id="pollutant-value">--</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="forecast-grid" id="forecast-container">
+                    <!-- Forecast cards injected by JS -->
+                </div>
+            </section>
+
+            <!-- Divider -->
+            <div class="divider">
+                <span data-i18n="divider.more">更多資訊</span>
+            </div>
+
+            <!-- Radar Map Section -->
+            <section class="radar-section glass-card" id="radar-section">
+                <div class="radar-header">
+                    <i class="fa-solid fa-cloud-bolt"></i>
+                    <h3 data-i18n="radar.title">即時雷達回波圖</h3>
+                    <span id="radar-update-time" class="radar-update-time">更新時間：--:--</span>
+                    <button id="radar-refresh-btn" class="btn-icon" data-i18n-title="radar.refresh">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                </div>
+
+                <!-- Radar Legend -->
+                <div class="radar-legend">
+                    <div class="legend-title">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span data-i18n="radar.legendTitle">回波強度圖例</span>
+                    </div>
+                    <div class="legend-items">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #00e400;"></div>
+                            <span data-i18n="radar.intensity.weak">微弱</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ffff00;"></div>
+                            <span data-i18n="radar.intensity.light">輕度</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ff9900;"></div>
+                            <span data-i18n="radar.intensity.moderate">中度</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ff0000;"></div>
+                            <span data-i18n="radar.intensity.strong">強烈</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #cc00cc;"></div>
+                            <span data-i18n="radar.intensity.severe">劇烈</span>
+                        </div>
+                    </div>
+                    <div class="legend-note">
+                        <i class="fa-solid fa-eye"></i>
+                        <span data-i18n="radar.instruction">固定視圖，顯示台灣全區雷達回波</span>
+                    </div>
+                </div>
+
+                <div id="radar-map"></div>
+
+                <div class="radar-info">
+                    <small data-i18n="radar.source">資料來源：中央氣象署 | 每 10 分鐘自動更新</small>
+                </div>
+            </section>
+
+            <div class="divider">
+                <span data-i18n="divider.or">或是</span>
+            </div>
+
+            <!-- All Cities Section -->
+            <section class="all-cities-section">
+                <button id="btn-query-all" class="btn-secondary glass-btn">
+                    <i class="fa-solid fa-chart-simple"></i> <span data-i18n="button.viewAllCities">查看全台溫度分佈</span>
+                </button>
+
+                <div id="chart-container" class="chart-wrapper glass-card hidden">
+                    <canvas id="weatherChart"></canvas>
+                </div>
+            </section>
+
+            <div class="divider">
+                <span data-i18n="divider.analysis">數據分析</span>
+            </div>
+
+            <!-- Data Analysis Section (Feature #13) -->
+            <section class="analysis-section glass-card">
+                <div class="analysis-header">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <h3>歷史天氣大數據</h3>
+                    <div class="stats-filter-group">
+                        <select id="stats-city-filter" class="stats-city-filter" title="選擇城市">
+                            <option value="">全部城市</option>
+                        </select>
+                        <button id="btn-refresh-stats" class="btn-icon" title="重新分析">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="stats-loading" class="hidden">
+                    <i class="fa-solid fa-spinner fa-spin"></i> 正在分析大數據...
+                </div>
+
+                <div id="stats-container" class="hidden">
+                    <!-- Key Metrics -->
+                    <div class="stats-metrics">
+                        <div class="metric-card">
+                            <div class="metric-title">歷史平均溫</div>
+                            <div class="metric-value" id="stat-avg-temp">--</div>
+                            <div class="metric-unit">°C</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-title">平均 AQI</div>
+                            <div class="metric-value" id="stat-avg-aqi">--</div>
+                            <div class="metric-unit">指數</div>
+                        </div>
+                    </div>
+
+                    <!-- Extreme Records -->
+                    <div class="stats-extremes">
+                        <div class="extreme-item hot">
+                            <i class="fa-solid fa-temperature-arrow-up"></i>
+                            <div>
+                                <span class="extreme-label">歷史最高溫</span>
+                                <span class="extreme-val" id="stat-max-temp">--</span>
+                                <span class="extreme-note" id="stat-max-temp-note">--</span>
+                            </div>
+                        </div>
+                        <div class="extreme-item cold">
+                            <i class="fa-solid fa-temperature-arrow-down"></i>
+                            <div>
+                                <span class="extreme-label">歷史最低溫</span>
+                                <span class="extreme-val" id="stat-min-temp">--</span>
+                                <span class="extreme-note" id="stat-min-temp-note">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trend Chart -->
+                    <div class="stats-chart-wrapper">
+                        <h4>最近 7 天平均氣溫趨勢</h4>
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <div class="divider">
+                <span data-i18n="divider.dataExport">資料管理</span>
+            </div>
+
+            <!-- Data Export Section -->
+            <section class="export-section glass-card">
+                <div class="export-header">
+                    <i class="fa-solid fa-download"></i>
+                    <h3 data-i18n="export.title">天氣資料匯出</h3>
+                </div>
+
+                <!-- Statistics Display -->
+                <div class="export-stats">
+                    <div class="stat-item">
+                        <i class="fa-solid fa-database"></i>
+                        <div class="stat-content">
+                            <div class="stat-label" data-i18n="export.totalRecords">總記錄數</div>
+                            <div class="stat-value" id="total-records">0</div>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fa-solid fa-calendar-days"></i>
+                        <div class="stat-content">
+                            <div class="stat-label" data-i18n="export.dateRange">資料範圍</div>
+                            <div class="stat-value" id="date-range">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filter Options -->
+                <div class="export-filters">
+                    <div class="filter-group">
+                        <label for="export-start-date">
+                            <i class="fa-solid fa-calendar-check"></i>
+                            <span data-i18n="export.startDate">開始日期</span>
+                        </label>
+                        <input type="date" id="export-start-date" class="date-input">
+                    </div>
+                    <div class="filter-group">
+                        <label for="export-end-date">
+                            <i class="fa-solid fa-calendar-xmark"></i>
+                            <span data-i18n="export.endDate">結束日期</span>
+                        </label>
+                        <input type="date" id="export-end-date" class="date-input">
+                    </div>
+                    <div class="filter-group">
+                        <label for="export-city-filter">
+                            <i class="fa-solid fa-filter"></i>
+                            <span data-i18n="export.filterCity">篩選城市</span>
+                        </label>
+                        <select id="export-city-filter" class="city-select">
+                            <option value="" data-i18n="export.allCities">全部城市</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Export Buttons -->
+                <div class="export-buttons">
+                    <button id="export-excel-btn" class="export-btn export-btn-excel">
+                        <i class="fa-solid fa-file-excel"></i>
+                        <span data-i18n="export.exportExcel">匯出 Excel</span>
+                    </button>
+                </div>
+
+                <!-- Export Info -->
+                <div class="export-info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span data-i18n="export.info">每次天氣查詢都會自動記錄，您可以隨時匯出歷史資料進行分析</span>
+                </div>
+            </section>
+        </main>
+
+        <footer class="glass-footer">
+            <p id="last-update">最後更新: --</p>
+            <p class="copyright" data-i18n="footer.dataSource">Data Source: CWA (中央氣象署)</p>
+        </footer>
+    </div>
+
+    <!-- Recommendation Modal (Feature #18) -->
+    <div id="recommend-modal" class="modal hidden">
+        <div class="modal-content glass-card">
+            <span class="close-modal">&times;</span>
+            <div class="modal-header">
+                <i class="fa-solid fa-plane-departure"></i>
+                <h2>智慧出遊推薦</h2>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">根據溫度、降雨機率與空氣品質，為您精選最舒適的城市：</p>
+                <div id="recommend-loading" class="hidden">
+                    <i class="fa-solid fa-spinner fa-spin"></i> 正在計算最佳行程...
+                </div>
+                <div id="recommend-results" class="recommend-results">
+                    <!-- Results injected by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- i18n Translation System -->
+    <script src="i18n.js"></script>
+    <!-- City Search Module -->
+    <script src="city-search.js"></script>
+    <!-- Language Manager -->
+    <script src="lang-manager.js"></script>
+    <!-- Leaflet JS for Map -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
