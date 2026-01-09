@@ -1914,7 +1914,8 @@ function updateFavoriteLabel(city) {
     }
 
     const currentLabel = favorite.label;
-    const newLabel = prompt(`請輸入 ${city} 的新名稱：`, currentLabel);
+    // User requested clearer text: "Modify Region" instead of "New Name"
+    const newLabel = prompt(`修改 ${favorite.label} 的地區或名稱 (輸入城市名可變更地區)：`, currentLabel);
 
     if (newLabel === null) return;  // User cancelled
     if (newLabel.trim() === '') {
@@ -1934,11 +1935,10 @@ function updateFavoriteLabel(city) {
         if (results && results.length > 0) {
             const bestMatch = results[0];
             // Allow Alias match (95) and Exact match (100)
-            // Even lower scores might be valid if user types "Taipei Home" -> "Taipei" (Score 60/80)
-            // But let's be safe with >= 90 for now
             if (bestMatch.score >= 90) {
                 favorite.city = bestMatch.city;
                 console.log(`[Favorites] Smart updated city ID to: ${favorite.city}`);
+                // Removed debug alert as verify complete
             }
         }
     } else {
