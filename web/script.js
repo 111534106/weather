@@ -1944,10 +1944,13 @@ function updateFavoriteLabel(city) {
             }
         }
     } else {
-        // Fallback: If no smart search, just update city ID to match label
-        favorite.city = updatedName;
-        favorite.label = updatedName;
-        isCityMatch = true;
+        // Fallback: If no smart search, WE CANNOT VALIDATE.
+        // User requested strict validation: "If no region -> No change".
+        // So if we can't search, we assume it's NOT a match.
+        // This effectively disables renaming if the search module is broken, 
+        // which is safer than breaking data integrity.
+        console.warn('[Favorites] CitySearch module missing, cannot validate name.');
+        // isCityMatch remains false.
     }
 
     // Strict Validation Mode: If not a city match, REJECT IT.
