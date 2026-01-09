@@ -1950,16 +1950,11 @@ function updateFavoriteLabel(city) {
         isCityMatch = true;
     }
 
-    // If not a city match, ask for confirmation (Fool-proof)
+    // Strict Validation Mode: If not a city match, REJECT IT.
     if (!isCityMatch) {
-        const confirmNickname = confirm(`「${updatedName}」不是一個已知的台灣城市。\n\n您確定要將其作為「${favorite.city}」的暱稱嗎？\n(按「取消」可重新輸入)`);
-        if (!confirmNickname) {
-            // User cancelled. Since we haven't modified 'favorite' yet, 
-            // doing nothing here is safe. The objects remain unchanged.
-            return;
-        }
-        // User confirmed they want a nickname
-        favorite.label = updatedName;
+        alert(`「${updatedName}」不是一個已知的台灣城市！\n無法修改為不存在的地區。`);
+        // Do NOT update favorite.label or favorite.city
+        return;
     }
 
     if (saveFavorites(favorites)) {
